@@ -3,16 +3,19 @@
     - msr_init: net parameter initialization.
     - progress_bar: progress bar mimic xlua.progress.
 '''
+import os
 import sys
 import time
 from abc import abstractmethod, ABCMeta
-from collections import Iterable
+from collections.abc import Iterable
+from functools import lru_cache
 from typing import Union, Dict, final
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.init as init
+from loguru import logger
 
 
 def get_mean_and_std(dataset):
@@ -154,7 +157,7 @@ class IteratorTimer:
         self._end_time = time.time()
 
     def summary(self):
-        return {"d_time": self._data_meter.summary(), "r_time": self._iter_meter.summary()}
+        return {"data": self._data_meter.summary(), "iteration": self._iter_meter.summary()}
 
     def __enter__(self):
         self.iter_begin()
@@ -167,7 +170,7 @@ class IteratorTimer:
 class Metric(metaclass=ABCMeta):
     _initialized = False
 
-    def __init__(self, threaded=False, use_deque=False) -> None:
+    def __init__(self, *, threaded=False, use_deque=False) -> None:
         super().__init__()
         self._initialized = True
 
@@ -211,6 +214,49 @@ class AverageValueMeter(Metric):
         if self.n == 0:
             return np.nan
         return float(self.sum / self.n)
+
+
+class EMAMeter(Metric):
+
+    def __init__(self, alpha: float = 0.9) -> None:
+        super().__init__()
+        self.alpha = alpha
+        self.reset()
+
+    def _add(self, value):
+        if self._n == 0:
+            self._ema_average = value
+        else:
+            self._ema_average = self._ema_average * self.alpha + value * (1 - self.alpha)
+        self._n += 1
+
+    def reset(self):
+        self._ema_average = None
+        self._n = 0
+
+    def _summary(self) -> Union[Dict[str, float], float]:
+        if self._ema_average is None:
+            raise RuntimeError(f"No value recorded in {self.__class__.__name__}.")
+        return self._ema_average
+
+
+class LRCounter(Metric):
+
+    def __init__(self, *, threaded=False, use_deque=False) -> None:
+        super().__init__(threaded=threaded, use_deque=use_deque)
+        self.reset()
+
+    def reset(self):
+        self._counter = dict()
+
+    def _add(self, value):
+        if value in self._counter:
+            self._counter[value] += 1
+        else:
+            self._counter[value] = 1
+
+    def _summary(self) -> Union[Dict[str, float], float]:
+        return {str(k): v for k, v in self._counter.items()}
 
 
 def is_float(v):
@@ -269,3 +315,24 @@ def item2str(item):
     if isinstance(item, dict):
         return _dict2str(item)
     return _iter2str(item)
+
+
+logger_format = "<green>{time:MM/DD HH:mm:ss.SS}</green> | <level>{level: ^7}</level> |" \
+                "{process.name:<5}.{thread.name:<5}: " \
+                "<cyan>{name:<8}</cyan>:<cyan>{function:<10}</cyan>:<cyan>{line:<4}</cyan>" \
+                " - <level>{message}</level>"
+
+
+@lru_cache()
+def config_logger():
+    logger.remove()
+
+    logger.add(sys.stderr, format=logger_format, backtrace=False, diagnose=True, colorize=True,
+               filter=lambda r: r["extra"].get("enabled", True))
+
+
+def adding_writable_sink(save_dir):
+    abs_save_dir = os.path.abspath(save_dir)
+    from loguru import logger
+    logger.add(os.path.join(abs_save_dir, "loguru.log"), level="TRACE", backtrace=False, diagnose=True,
+               format=logger_format)
