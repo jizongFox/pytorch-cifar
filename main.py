@@ -22,7 +22,7 @@ def init(args: argparse.Namespace):
     net = nn.DataParallel(net)
 
     criterion = nn.CrossEntropyLoss().cuda()
-    optimizer = torch.optim.Adam(net.parameters(), lr=0.01, weight_decay=1e-4)
+    optimizer = torch.optim.Adam(net.parameters(), lr=args.lr, weight_decay=1e-4)
 
     # Data
     print('==> Preparing data..')
