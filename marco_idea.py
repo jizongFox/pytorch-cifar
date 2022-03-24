@@ -47,7 +47,7 @@ class Strategy(metaclass=ABCMeta):
 class DoNothingStrategy(Strategy):
 
     def step(self, batch_accuracy: Tensor, batch_loss: Tensor) -> None:
-        pass
+        self._n += 1
 
 
 class StochasticSampling(Strategy):
