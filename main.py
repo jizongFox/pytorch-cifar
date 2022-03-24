@@ -64,7 +64,8 @@ def init(args: argparse.Namespace):
     return net, optimizer, train_loader, test_loader, criterion, scaler, autocast, strategy
 
 
-def train_epoch(epoch, net, train_loader, optimizer, *, scaler: GradScaler, autocast: AutoCast, strategy: Strategy):
+def train_epoch(epoch, net, train_loader, optimizer, *, scaler: GradScaler, autocast: AutoCast, strategy: Strategy,
+                writer: SummaryWriter):
     print('\nEpoch: %d' % epoch)
     net.train()
     loss_meter = AverageValueMeter()
@@ -90,6 +91,7 @@ def train_epoch(epoch, net, train_loader, optimizer, *, scaler: GradScaler, auto
 
             strategy.step(batch_accuracy=batch_accuracy, batch_loss=loss)
             lr_counter.add(strategy.get_learning_rate())
+            writer.add_scalar(tag="lr", scalar_value=strategy.get_learning_rate(), global_step=strategy._n)
 
         progress_bar(batch_idx, len(train_loader), 'Loss: %.3f | Acc: %.3f%% (%.3f%%)'
                      % (loss_meter.summary(), 100. * accuracy_meter.summary(), batch_accuracy * 100.))
@@ -124,7 +126,7 @@ def worker(args):
     with SummaryWriter(args.save_dir) as writer:
         for epoch in range(200):
             train_metrics = train_epoch(epoch, net, train_loader, optimizer, scaler=scaler, autocast=autocast,
-                                        strategy=strategy)
+                                        strategy=strategy, writer=writer)
             logger.info(f"Training Epoch {epoch}: {item2str(train_metrics)}")
 
             lr_stats = train_metrics.pop("lr_state")
