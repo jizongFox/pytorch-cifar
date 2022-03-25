@@ -3,5 +3,5 @@ checkpoint
 __pycache__
 data
 .idea
-runs
+runs*
 

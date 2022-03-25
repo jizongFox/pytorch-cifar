@@ -56,8 +56,9 @@ def init(args: argparse.Namespace):
         strategy = DoNothingStrategy(optimizer=optimizer)
     elif args.strategy_name == "stochastic":
         strategy = StochasticSampling(
-            optimizer=optimizer, alpha=0.95, T=args.T, learning_rate_choices=sorted(set([*args.possible_lrs, args.lr])),
-            update_every_step=10,
+            optimizer=optimizer, alpha=args.beta, T=args.T,
+            learning_rate_choices=sorted(set([*args.possible_lrs, args.lr])),
+            update_every_step=args.N,
         )
     else:
         raise NotImplementedError(args.strategy_name)
@@ -124,7 +125,7 @@ def worker(args):
     net, optimizer, train_loader, test_loader, criterion, scaler, autocast, strategy = init(args)
 
     with SummaryWriter(args.save_dir) as writer:
-        for epoch in range(200):
+        for epoch in range(100):
             train_metrics = train_epoch(epoch, net, train_loader, optimizer, scaler=scaler, autocast=autocast,
                                         strategy=strategy, writer=writer)
             logger.info(f"Training Epoch {epoch}: {item2str(train_metrics)}")
@@ -158,6 +159,8 @@ if __name__ == '__main__':
     parser.add_argument("-b", "--batch-size", type=int, default=256, help="Batch Size")
     parser.add_argument("--num-workers", type=int, default=12, help="Number of workers")
     parser.add_argument("--T", type=float, default=0.1, help="temperature for softmax")
+    parser.add_argument("--N", type=int, default=10, help="sample learning rate every N iterations")
+    parser.add_argument("--beta", type=float, default=0.95, help="ema beta")
     parser.add_argument("--enable-scale", default=False, action="store_true", help="enable amp training")
     parser.add_argument("--save-dir", required=True, type=str, help="save directory for tensorboard and logs.")
     args = parser.parse_args()
