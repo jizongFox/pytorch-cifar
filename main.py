@@ -17,7 +17,10 @@ def init(args):
     net = nn.DataParallel(net)
 
     criterion = nn.CrossEntropyLoss().cuda()
-    optimizer = torch.optim.SGD(net.parameters(), 1e-3, momentum=0.9, weight_decay=1e-4)
+    optimizer = torch.optim.SGD(net.parameters(),
+                                1e-3,
+                                momentum=0.9,
+                                weight_decay=1e-4)
 
     # Data
     print('==> Preparing data..')
@@ -25,30 +28,46 @@ def init(args):
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        transforms.Normalize((0.4914, 0.4822, 0.4465),
+                             (0.2023, 0.1994, 0.2010)),
     ])
 
     transform_test = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        transforms.Normalize((0.4914, 0.4822, 0.4465),
+                             (0.2023, 0.1994, 0.2010)),
     ])
 
-    trainset = torchvision.datasets.CIFAR10(
-        root='./data', train=True, download=True, transform=transform_train)
-    trainloader = DataLoader(
-        trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True,
-        persistent_workers=True
+    trainset = torchvision.datasets.CIFAR10(root='./data',
+                                            train=True,
+                                            download=True,
+                                            transform=transform_train)
+    trainloader = DataLoader(trainset,
+                             batch_size=args.batch_size,
+                             shuffle=True,
+                             num_workers=args.num_workers,
+                             pin_memory=True,
+                             persistent_workers=True)
 
-    )
-
-    testset = torchvision.datasets.CIFAR10(
-        root='./data', train=False, download=True, transform=transform_test)
-    testloader = DataLoader(
-        testset, batch_size=100, shuffle=False, num_workers=2, pin_memory=False, persistent_workers=True)
+    testset = torchvision.datasets.CIFAR10(root='./data',
+                                           train=False,
+                                           download=True,
+                                           transform=transform_test)
+    testloader = DataLoader(testset,
+                            batch_size=100,
+                            shuffle=False,
+                            num_workers=2,
+                            pin_memory=False,
+                            persistent_workers=True)
     return net, optimizer, trainloader, testloader, criterion
 
 
-def train(epoch, net, trainloader, optimizer, ):
+def train(
+    epoch,
+    net,
+    trainloader,
+    optimizer,
+):
     print('\nEpoch: %d' % epoch)
     net.train()
     train_loss = 0
@@ -69,12 +88,18 @@ def train(epoch, net, trainloader, optimizer, ):
             total += targets.size(0)
             correct += predicted.eq(targets).sum().item()
 
-        progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-                     % (train_loss / (batch_idx + 1), 100. * correct / total, correct, total))
+        progress_bar(
+            batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)' %
+            (train_loss /
+             (batch_idx + 1), 100. * correct / total, correct, total))
     print(f"Epoch {epoch}: {item2str(timer.summary())}")
 
 
-def _test(epoch, net, testloader, ):
+def _test(
+    epoch,
+    net,
+    testloader,
+):
     net.eval()
     test_loss = 0
     correct = 0
@@ -90,8 +115,11 @@ def _test(epoch, net, testloader, ):
             total += targets.size(0)
             correct += predicted.eq(targets).sum().item()
 
-            progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-                         % (test_loss / (batch_idx + 1), 100. * correct / total, correct, total))
+            progress_bar(
+                batch_idx, len(testloader),
+                'Loss: %.3f | Acc: %.3f%% (%d/%d)' %
+                (test_loss /
+                 (batch_idx + 1), 100. * correct / total, correct, total))
 
 
 def worker(args):

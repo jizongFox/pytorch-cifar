@@ -17,7 +17,10 @@ import torch.nn.init as init
 
 def get_mean_and_std(dataset):
     '''Compute the mean and std value of dataset.'''
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=True, num_workers=2)
+    dataloader = torch.utils.data.DataLoader(dataset,
+                                             batch_size=1,
+                                             shuffle=True,
+                                             num_workers=2)
     mean = torch.zeros(3)
     std = torch.zeros(3)
     print('==> Computing mean and std..')
@@ -132,7 +135,6 @@ def format_time(seconds):
 
 
 class IteratorTimer:
-
     def __init__(self) -> None:
         super().__init__()
         self._iter_meter = AverageValueMeter()
@@ -154,7 +156,10 @@ class IteratorTimer:
         self._end_time = time.time()
 
     def summary(self):
-        return {"d_time": self._data_meter.summary(), "r_time": self._iter_meter.summary()}
+        return {
+            "d_time": self._data_meter.summary(),
+            "r_time": self._iter_meter.summary()
+        }
 
     def __enter__(self):
         self.iter_begin()
@@ -260,9 +265,9 @@ def _dict2str(dictionary: dict):
 
 def _iter2str(item: Iterable):
     """A list or a tuple"""
-    return ", ".join(
-        [_least_item2str(x) if not is_iterable(x) else item2str(x) for x in item]
-    )
+    return ", ".join([
+        _least_item2str(x) if not is_iterable(x) else item2str(x) for x in item
+    ])
 
 
 def item2str(item):
