@@ -6,7 +6,7 @@
 import sys
 import time
 from abc import abstractmethod, ABCMeta
-from collections import Iterable
+from collections.abc import Iterable
 from typing import Union, Dict, final
 
 import numpy as np
@@ -133,25 +133,31 @@ def format_time(seconds):
 
 class IteratorTimer:
 
-    def __init__(self) -> None:
+    def __init__(self, device=None) -> None:
         super().__init__()
+        self._device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self._iter_meter = AverageValueMeter()
         self._data_meter = AverageValueMeter()
-        self._cur_time = time.time()
-        self._end_time = time.time()
+        self._cur_time = time.perf_counter()
+        self._end_time = self._cur_time
 
     def iter_begin(self):
-        self._cur_time = time.time()
+        self._cur_time = time.perf_counter()
         self._data_meter.add(self._cur_time - self._end_time)
-        self._start = torch.cuda.Event(enable_timing=True)
-        self._end = torch.cuda.Event(enable_timing=True)
-        self._start.record()
+        if self._device.type == "cuda":
+            self._start = torch.cuda.Event(enable_timing=True)
+            self._end = torch.cuda.Event(enable_timing=True)
+            self._start.record(torch.cuda.current_stream(self._device))
 
     def iter_end(self):
-        self._end.record()
-        torch.cuda.synchronize()
-        self._iter_meter.add(self._start.elapsed_time(self._end) / 1000)
-        self._end_time = time.time()
+        if self._device.type == "cuda":
+            self._end.record(torch.cuda.current_stream(self._device))
+            self._end.synchronize()
+            elapsed = self._start.elapsed_time(self._end) / 1000
+        else:
+            elapsed = time.perf_counter() - self._cur_time
+        self._iter_meter.add(elapsed)
+        self._end_time = time.perf_counter()
 
     def summary(self):
         return {"d_time": self._data_meter.summary(), "r_time": self._iter_meter.summary()}
