@@ -133,31 +133,25 @@ def format_time(seconds):
 
 class IteratorTimer:
 
-    def __init__(self, device=None) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self._device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self._iter_meter = AverageValueMeter()
         self._data_meter = AverageValueMeter()
-        self._cur_time = time.perf_counter()
-        self._end_time = self._cur_time
+        self._cur_time = time.time()
+        self._end_time = time.time()
 
     def iter_begin(self):
-        self._cur_time = time.perf_counter()
+        self._cur_time = time.time()
         self._data_meter.add(self._cur_time - self._end_time)
-        if self._device.type == "cuda":
-            self._start = torch.cuda.Event(enable_timing=True)
-            self._end = torch.cuda.Event(enable_timing=True)
-            self._start.record(torch.cuda.current_stream(self._device))
+        self._start = torch.cuda.Event(enable_timing=True)
+        self._end = torch.cuda.Event(enable_timing=True)
+        self._start.record()
 
     def iter_end(self):
-        if self._device.type == "cuda":
-            self._end.record(torch.cuda.current_stream(self._device))
-            self._end.synchronize()
-            elapsed = self._start.elapsed_time(self._end) / 1000
-        else:
-            elapsed = time.perf_counter() - self._cur_time
-        self._iter_meter.add(elapsed)
-        self._end_time = time.perf_counter()
+        self._end.record()
+        torch.cuda.synchronize()
+        self._iter_meter.add(self._start.elapsed_time(self._end) / 1000)
+        self._end_time = time.time()
 
     def summary(self):
         return {"d_time": self._data_meter.summary(), "r_time": self._iter_meter.summary()}
