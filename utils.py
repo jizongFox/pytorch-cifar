@@ -6,7 +6,7 @@
 import sys
 import time
 from abc import abstractmethod, ABCMeta
-from collections import Iterable
+from collections.abc import Iterable
 from typing import Union, Dict, final
 
 import numpy as np

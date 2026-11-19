@@ -22,6 +22,16 @@ python main.py
 python main.py --resume --lr=0.01
 ```
 
+## Vision Transformers
+
+Both models apply six encoder blocks per forward pass. `vit` uses six independent
+blocks, and `looped-vit` applies one shared block six times. Use PyTorch 2.x.
+
+```bash
+python main.py --model vit
+python main.py --model looped-vit
+```
+
 ## Accuracy
 | Model             | Acc.        |
 | ----------------- | ----------- |

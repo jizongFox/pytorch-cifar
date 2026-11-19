@@ -13,8 +13,12 @@ from utils import progress_bar, IteratorTimer, item2str
 def init(args):
     # Init Model
     print("Initialize Model...")
-    net = EfficientNetB0().cuda()
-    net = nn.DataParallel(net)
+    model = getattr(args, "model", "efficientnet")
+    if model == "efficientnet":
+        net = EfficientNetB0()
+    else:
+        net = VisionTransformer(looped=model == "looped-vit")
+    net = nn.DataParallel(net.cuda())
 
     criterion = nn.CrossEntropyLoss().cuda()
     optimizer = torch.optim.SGD(net.parameters(), 1e-3, momentum=0.9, weight_decay=1e-4)
@@ -106,6 +110,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("-b", "--batch-size", type=int, default=256)
     parser.add_argument("--num-workers", type=int, default=12)
+    parser.add_argument("--model", choices=("efficientnet", "vit", "looped-vit"),
+                        default="efficientnet")
     args = parser.parse_args()
     pprint(vars(args))
     worker(args)
